@@ -1,4 +1,5 @@
 (defvar *global-env* (make-hash-table :test 'equal))
+(defvar locallist (list nil))
 
 (defun evaluar-oz (exp env)
   (cond
@@ -13,8 +14,8 @@
     ((eq (car exp) 'Browse)
      (let ((val (cadr exp)))
         (if (symbolp val) ; Verifica si es una variable
-          (if (boundp '*local-env*) ;; si esta el entorno local 
-            (print (gethash val *local-env*)) ;; Imprimo el valor de la variable en el local
+          (if (> (length locallist) 1) ;; si esta el entorno local 
+            (print (gethash (find val locallist) env)) ;; Imprimo el valor de la variable en el local
             (print (gethash val env))
           )
           (print val)
@@ -24,22 +25,29 @@
     ;; Otras ramas de la función eval-oz...
     (
       (eq (car exp) 'local)
-      (let ((val (cadr exp)))
-           (defvar *local-env* (make-hash-table :test 'equal))
+      (let ((varname (cadr exp)))
+           (setq locallist (append locallist (list varname)))
       )
     )
 
     (
       (eq (cadr exp) '=)
       (let ((var (car exp))
-           (val (caddr exp))) 
-           (setf (gethash var *local-env*) val)
+           (val (caddr exp)))
+           (if (find var locallist)
+             (setf (gethash var env) val)
+           )
       )
     )
 
     (
       (eq (car exp) 'end)
-      (makunbound '*local-env*)
+      (if (> (length locallist) 1)
+        (remhash (car (last locallist)) env)
+      )
+      (if (> (length locallist) 1)
+        (setq locallist (remove (car (last locallist)) locallist))
+      )
     )
 
     (t (error "Expresión no reconocida: ~a" exp)))
